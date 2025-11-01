@@ -1,0 +1,1 @@
+{"root":["./src/main.tsx","./src/web/app.tsx","./src/web/lib/api.ts","./src/web/lib/types.ts","./src/web/pages/blocked.tsx","./src/web/pages/home.tsx","./src/web/pages/login.tsx","./src/web/pages/notifications.tsx","./src/web/pages/profile.tsx","./src/web/pages/room.tsx","./src/web/pages/security.tsx","./src/web/pages/settings.tsx"],"version":"5.9.3"}
