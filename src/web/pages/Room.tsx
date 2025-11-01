@@ -12,49 +12,6 @@ export default function Room() {
   useEffect(() => {
     if (!id) return
     
-    // Mock data for test rooms
-    if (id.startsWith('room-')) {
-      const mockRoom = {
-        id,
-        name: id === 'room-1' ? 'Living Room' : id === 'room-2' ? 'Bed Room' : id === 'room-3' ? 'Kitchen' : id === 'room-4' ? 'Bath Room' : id === 'room-5' ? 'Store Room' : 'Outdoor',
-        command: {
-          tempratureSensor: 22,
-          humidtySensor: 45,
-          mainLight: 'off',
-          sideLight: 'off',
-          ac: 0,
-          charger: 'off',
-          music: 'off',
-          tv: 'off',
-          door: 'off',
-          smartCurtain: 'closed',
-          plantWateringPump: 'off',
-          stove: 'off',
-          oven: 'off',
-          freezer: 'off',
-          fan: 'off',
-        },
-        activities: {
-          mainLight: true,
-          sideLight: true,
-          ac: true,
-          charger: true,
-          music: true,
-          tv: true,
-          door: true,
-          smartCurtain: true,
-          plantWateringPump: true,
-          stove: true,
-          oven: true,
-          freezer: true,
-          fan: true,
-        }
-      }
-      setRoom(mockRoom as any)
-      setLoading(false)
-      return
-    }
-    
     ;(async () => {
       try {
         const data = await api.getRoomById(id)
@@ -72,15 +29,6 @@ export default function Room() {
     else if (typeof cur === 'number') next = cur > 0 ? 0 : 100
     else next = cur === 'off' ? 'on' : 'off'
     
-    // Mock update for test rooms
-    if (room.id.startsWith('room-')) {
-      setRoom({
-        ...room,
-        command: { ...room.command, [key]: next }
-      })
-      return
-    }
-    
     try {
       await api.updateRoomCommand(room.id, { [key]: next } as any)
       const data = await api.getRoomById(room.id)
@@ -93,15 +41,6 @@ export default function Room() {
     const states = ['open', 'halfClose', 'close']
     const cur = room.command.smartCurtain
     const next = states[(states.indexOf(cur) + 1) % states.length] as any
-    
-    // Mock update for test rooms
-    if (room.id.startsWith('room-')) {
-      setRoom({
-        ...room,
-        command: { ...room.command, smartCurtain: next }
-      })
-      return
-    }
     
     try {
       await api.updateRoomCommand(room.id, { smartCurtain: next })

@@ -1,7 +1,8 @@
 import axios from 'axios'
 import type { Room, Device, User } from './types'
 
-const API_URL = 'https://smart-home-2hdi.onrender.com/api'
+const API_URL = 'https://web-smart-backend.onrender.com/api'
+export const DEFAULT_HOME_ID = 'd4a172af-579a-4cd8-80e3-1ec875ad71c1'
 
 export const api = {
   login: async (username: string, password: string) => {
@@ -57,11 +58,31 @@ export const api = {
     return data
   },
   getNotfications: async (homeId: string) => {
-    const { data } = await axios.get(`${API_URL}/otifications/${homeId}`)
+    const { data } = await axios.get(`${API_URL}/notifications/${homeId}`)
     return data
   },
-  readNotfications: async (id: string) => {
-    const { data } = await axios.get(`${API_URL}/otifications/read/${id}`)
+ readNotfications: async (id: string) => {
+    const { data } = await axios.get(`${API_URL}/notifications/read/${id}`)
+    return data
+  },
+  updateSwitch: async (id: string, value: number, name?: string, description?: string) => {
+    const { data } = await axios.put(`${API_URL}/switch/${id}`, { value, name, description })
+    return data
+  },
+  updateOnOff: async (id: string, value: boolean, name?: string) => {
+    const { data } = await axios.put(`${API_URL}/onoff/${id}`, { value, name })
+    return data
+  },
+  updateAc: async (id: string, value: number, name?: string) => {
+    const { data } = await axios.put(`${API_URL}/ac/${id}`, { value, name })
+    return data
+  },
+  updateMusic: async (id: string, volume: number, playing: boolean, name?: string) => {
+    const { data } = await axios.put(`${API_URL}/music/${id}`, { volume, playing, name })
+    return data
+  },
+  updateTv: async (id: string, channel: number, volume: number, isOn: boolean, name?: string) => {
+    const { data } = await axios.put(`${API_URL}/tv/${id}`, { channel, volume, isOn, name })
     return data
   },
 }

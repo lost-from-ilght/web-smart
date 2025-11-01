@@ -18,25 +18,11 @@ export default function Login() {
     }
     setLoading(true)
     try {
-      // Mock login for testing
-      if (username === 'tad' && password === '1234') {
-        const mockUser = {
-          user: {
-            id: 'mock-user-id',
-            name: 'Tad',
-            email: 'tad@example.com',
-            phoneNumber: '+1234567890',
-            home_id: 'mock-home-id'
-          }
-        }
-        localStorage.setItem('userId', mockUser.user.id)
-        localStorage.setItem('@user_data', JSON.stringify(mockUser))
-        navigate('/', { replace: true })
+      const user = await api.login(username, password)
+      if (user?.user?.status === 'inactive' || user?.user?.status === 'blocked') {
+        navigate('/blocked', { replace: true })
         return
       }
-      
-      // Real API login
-      const user = await api.login(username, password)
       localStorage.setItem('userId', user?.user?.id)
       localStorage.setItem('@user_data', JSON.stringify(user))
       navigate('/', { replace: true })

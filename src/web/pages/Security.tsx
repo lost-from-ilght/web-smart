@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../lib/api'
+import { api, DEFAULT_HOME_ID } from '../lib/api'
 
 export default function Security() {
   const navigate = useNavigate()
@@ -11,9 +11,13 @@ export default function Security() {
     const stored = localStorage.getItem('@user_data')
     if (!stored) return navigate('/login', { replace: true })
     const user = JSON.parse(stored)
+    let homeId = user.user?.home_id
+    if (!homeId || homeId === 'mock-home-id' || homeId === 'undefined' || homeId === 'null') {
+      homeId = DEFAULT_HOME_ID
+    }
     ;(async () => {
       try {
-        const data = await api.getDanger(user.user.home_id)
+        const data = await api.getDanger(homeId)
         setDanger(data?.[0])
       } catch {}
       setLoading(false)
