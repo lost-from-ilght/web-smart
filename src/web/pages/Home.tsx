@@ -507,11 +507,18 @@ export default function Home() {
                   </div>
                 ))}
 
-                {/* Command-based controls (door, smartCurtain, etc.) - only show if active */}
+                {/* Command-based controls (door, smartCurtain, lights, stoves, etc.) - only show if active */}
                 {room.activities && Object.entries(room.activities).map(([key, isActive]: [string, any]) => {
                   if (!isActive) return null
                   const state = (room.command as any)?.[key]
                   
+                  // Skip devices that are already shown as switches, onoffs, acs, musics, tvs, or sensors
+                  const skipKeys = ['ac', 'music', 'tv', 'tempratureSensor', 'gases', 'smokes', 'humiditySensor', 
+                    'rainSensors', 'motionDetector', 'waterFlowSensor', 'depthSensor', 'soilmoistureSensor', 
+                    'waterTanker', 'humidtySensor']
+                  if (skipKeys.includes(key)) return null
+                  
+                  // Smart Curtain - special handling
                   if (key === 'smartCurtain') {
                     const active = isDeviceActive(key, state)
                     return (
@@ -523,13 +530,38 @@ export default function Home() {
                     )
                   }
                   
-                  if (['door', 'charger', 'stove', 'oven', 'freezer', 'fan', 'plantWateringPump'].includes(key)) {
+                  // All light devices
+                  const lightKeys = ['mainLight', 'sideLight', 'leftHeadLight', 'rightHeadLight', 'goldLight', 
+                    'whiteLight', 'frontSideLights', 'backSideLights', 'wallLights', 'dangerFence', 
+                    'storRoomLight', 'centerLight', 'spotLight', 'shadowLight', 'diningLight', 'colliderLight']
+                  if (lightKeys.includes(key)) {
                     const active = isDeviceActive(key, state)
                     return (
                       <button key={key} style={{ ...(styles.deviceCard as any), ...(active ? (styles.deviceCardActive as any) : {}) }} onClick={() => toggleKey(room.id, key as any)}>
-                        <div style={{ fontSize: '20px', color: active ? '#4CAF50' : '#666' }}>
-                          {key === 'door' ? '🚪' : key === 'charger' ? '🔌' : key === 'stove' ? '🔥' : key === 'oven' ? '🔥' : key === 'freezer' ? '🧊' : key === 'fan' ? '🌀' : '🌱'}
-                        </div>
+                        <div style={{ fontSize: '20px', color: active ? '#4CAF50' : '#666' }}>💡</div>
+                        <div style={{ marginTop: 4, fontWeight: 600 }}>{key.replace(/([A-Z])/g, ' $1').replace(/^\w/, c => c.toUpperCase())}</div>
+                        <div style={{ fontSize: '12px', color: '#ccc' }}>{String(state || 'off')}</div>
+                      </button>
+                    )
+                  }
+                  
+                  // All other control devices (door, charger, stoves, oven, freezer, fan, plantWateringPump)
+                  const controlKeys = ['door', 'charger', 'stove', 'stove1', 'stove2', 'oven', 'freezer', 'fan', 'plantWateringPump']
+                  if (controlKeys.includes(key)) {
+                    const active = isDeviceActive(key, state)
+                    const getIcon = (k: string) => {
+                      if (k === 'door') return '🚪'
+                      if (k === 'charger') return '🔌'
+                      if (k === 'stove' || k === 'stove1' || k === 'stove2') return '🔥'
+                      if (k === 'oven') return '🔥'
+                      if (k === 'freezer') return '🧊'
+                      if (k === 'fan') return '🌀'
+                      if (k === 'plantWateringPump') return '🌱'
+                      return '⚡'
+                    }
+                    return (
+                      <button key={key} style={{ ...(styles.deviceCard as any), ...(active ? (styles.deviceCardActive as any) : {}) }} onClick={() => toggleKey(room.id, key as any)}>
+                        <div style={{ fontSize: '20px', color: active ? '#4CAF50' : '#666' }}>{getIcon(key)}</div>
                         <div style={{ marginTop: 4, fontWeight: 600 }}>{key.replace(/([A-Z])/g, ' $1').replace(/^\w/, c => c.toUpperCase())}</div>
                         <div style={{ fontSize: '12px', color: '#ccc' }}>{String(state || 'off')}</div>
                       </button>
