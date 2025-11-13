@@ -533,7 +533,8 @@ export default function Home() {
                   // All light devices
                   const lightKeys = ['mainLight', 'sideLight', 'leftHeadLight', 'rightHeadLight', 'goldLight', 
                     'whiteLight', 'frontSideLights', 'backSideLights', 'wallLights', 'dangerFence', 
-                    'storRoomLight', 'centerLight', 'spotLight', 'shadowLight', 'diningLight', 'colliderLight']
+                    'storRoomLight', 'centerLight', 'spotLight', 'shadowLight', 'diningLight', 'colliderLight',
+                    'strippeLight', 'diningStrippeLight']
                   if (lightKeys.includes(key)) {
                     const active = isDeviceActive(key, state)
                     return (
