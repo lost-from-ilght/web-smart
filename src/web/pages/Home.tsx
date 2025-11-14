@@ -53,31 +53,11 @@ export default function Home() {
     } catch {}
   }
 
-  const handleCurtain = async (roomId: string) => {
-    const room = rooms.find(r => r.id === roomId)
-    if (!room) return
-    
-    const states = ['open', 'halfClose', 'close']
-    const cur = room.command.smartCurtain
-    const next = states[(states.indexOf(cur) + 1) % states.length] as any
-    
-    try {
-      await api.updateRoomCommand(roomId, { smartCurtain: next })
-      let homeId = user.user?.home_id
-      if (!homeId || homeId === 'mock-home-id' || homeId === 'undefined' || homeId === 'null') {
-        homeId = DEFAULT_HOME_ID
-      }
-      const data = await api.getRooms(homeId)
-      setRooms(data || [])
-    } catch {}
-  }
-
   const isDeviceActive = (deviceKey: string, value: any) => {
     if (typeof value === 'boolean') return value
     if (typeof value === 'number') return value > 0
     if (typeof value === 'string') {
       const v = value.toLowerCase()
-      if (deviceKey === 'smartCurtain') return v !== 'closed' && v !== 'close'
       return v === 'on' || v === 'unlock' || v === 'open'
     }
     return false
@@ -102,467 +82,80 @@ export default function Home() {
           {rooms.map((room) => (
             <div key={room.id} style={styles.roomSection as any}>
               <h2 style={styles.roomTitle as any}>{room.name}</h2>
-              <div style={styles.roomStats as any}>
-                <div style={styles.stat as any}>
-                  <span>🌡️</span>
-                  <div style={styles.statValue as any}>{room.command?.tempratureSensor ?? 'N/A'}°C</div>
-                </div>
-                <div style={styles.stat as any}>
-                  <span>💧</span>
-                  <div style={styles.statValue as any}>{room.command?.humidtySensor ?? 'N/A'}%</div>
-                </div>
-              </div>
               
               <div style={styles.devicesGrid as any} className="devices-grid">
-                {/* Switches (Lights) */}
-                {(room.switches || []).map((switchDevice: any, idx: number) => (
-                  <button 
-                    key={`switch-${switchDevice.id}-${idx}`} 
-                    style={{ 
-                      ...(styles.deviceCard as any), 
-                      ...(switchDevice.value > 0 ? (styles.deviceCardActive as any) : {}) 
-                    }} 
-                    onClick={() => {
-                      const newValue = switchDevice.value > 0 ? 0 : 100
-                      api.updateSwitch(switchDevice.id, newValue, switchDevice.name, switchDevice.description)
-                        .then(() => {
-                          let homeId = user.user?.home_id
-                          if (!homeId || homeId === 'mock-home-id' || homeId === 'undefined' || homeId === 'null') {
-                            homeId = DEFAULT_HOME_ID
-                          }
-                          return api.getRooms(homeId)
-                        })
-                        .then((data) => {
-                          if (!data) return
-                          // Preserve the original order by matching with existing rooms
-                          const updatedRooms = data.map((newRoom: any) => {
-                            const existingRoom = rooms.find((r: any) => r.id === newRoom.id)
-                            if (!existingRoom) return newRoom
-                            
-                            // Preserve order of devices by matching IDs with existing room
-                            const orderedRoom = { ...newRoom }
-                            if (existingRoom.switches && newRoom.switches) {
-                              orderedRoom.switches = existingRoom.switches.map((existing: any) => 
-                                newRoom.switches.find((s: any) => s.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.switches.filter((s: any) => !existingRoom.switches.some((e: any) => e.id === s.id))
-                              )
-                            }
-                            if (existingRoom.onoffs && newRoom.onoffs) {
-                              orderedRoom.onoffs = existingRoom.onoffs.map((existing: any) => 
-                                newRoom.onoffs.find((o: any) => o.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.onoffs.filter((o: any) => !existingRoom.onoffs.some((e: any) => e.id === o.id))
-                              )
-                            }
-                            if (existingRoom.acs && newRoom.acs) {
-                              orderedRoom.acs = existingRoom.acs.map((existing: any) => 
-                                newRoom.acs.find((a: any) => a.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.acs.filter((a: any) => !existingRoom.acs.some((e: any) => e.id === a.id))
-                              )
-                            }
-                            if (existingRoom.musics && newRoom.musics) {
-                              orderedRoom.musics = existingRoom.musics.map((existing: any) => 
-                                newRoom.musics.find((m: any) => m.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.musics.filter((m: any) => !existingRoom.musics.some((e: any) => e.id === m.id))
-                              )
-                            }
-                            if (existingRoom.tvs && newRoom.tvs) {
-                              orderedRoom.tvs = existingRoom.tvs.map((existing: any) => 
-                                newRoom.tvs.find((t: any) => t.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.tvs.filter((t: any) => !existingRoom.tvs.some((e: any) => e.id === t.id))
-                              )
-                            }
-                            return orderedRoom
-                          })
-                          setRooms(updatedRooms)
-                        })
-                        .catch(console.error)
-                    }}
-                  >
-                    <div style={{ fontSize: '20px', color: switchDevice.value > 0 ? '#4CAF50' : '#666' }}>💡</div>
-                    <div style={{ marginTop: 4, fontWeight: 600 }}>{switchDevice.name}</div>
-                    <div style={{ fontSize: '12px', color: '#ccc' }}>{switchDevice.value > 0 ? 'ON' : 'OFF'}</div>
-                  </button>
-                ))}
-
-                {/* On/Off Devices */}
-                {(room.onoffs || []).map((onoff: any, idx: number) => (
-                  <button 
-                    key={`onoff-${onoff.id}-${idx}`} 
-                    style={{ 
-                      ...(styles.deviceCard as any), 
-                      ...(onoff.value ? (styles.deviceCardActive as any) : {}) 
-                    }} 
-                    onClick={() => {
-                      api.updateOnOff(onoff.id, !onoff.value, onoff.name)
-                        .then(() => {
-                          let homeId = user.user?.home_id
-                          if (!homeId || homeId === 'mock-home-id' || homeId === 'undefined' || homeId === 'null') {
-                            homeId = DEFAULT_HOME_ID
-                          }
-                          return api.getRooms(homeId)
-                        })
-                        .then((data) => {
-                          if (!data) return
-                          // Preserve the original order by matching with existing rooms
-                          const updatedRooms = data.map((newRoom: any) => {
-                            const existingRoom = rooms.find((r: any) => r.id === newRoom.id)
-                            if (!existingRoom) return newRoom
-                            
-                            // Preserve order of devices by matching IDs with existing room
-                            const orderedRoom = { ...newRoom }
-                            if (existingRoom.switches && newRoom.switches) {
-                              orderedRoom.switches = existingRoom.switches.map((existing: any) => 
-                                newRoom.switches.find((s: any) => s.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.switches.filter((s: any) => !existingRoom.switches.some((e: any) => e.id === s.id))
-                              )
-                            }
-                            if (existingRoom.onoffs && newRoom.onoffs) {
-                              orderedRoom.onoffs = existingRoom.onoffs.map((existing: any) => 
-                                newRoom.onoffs.find((o: any) => o.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.onoffs.filter((o: any) => !existingRoom.onoffs.some((e: any) => e.id === o.id))
-                              )
-                            }
-                            if (existingRoom.acs && newRoom.acs) {
-                              orderedRoom.acs = existingRoom.acs.map((existing: any) => 
-                                newRoom.acs.find((a: any) => a.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.acs.filter((a: any) => !existingRoom.acs.some((e: any) => e.id === a.id))
-                              )
-                            }
-                            if (existingRoom.musics && newRoom.musics) {
-                              orderedRoom.musics = existingRoom.musics.map((existing: any) => 
-                                newRoom.musics.find((m: any) => m.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.musics.filter((m: any) => !existingRoom.musics.some((e: any) => e.id === m.id))
-                              )
-                            }
-                            if (existingRoom.tvs && newRoom.tvs) {
-                              orderedRoom.tvs = existingRoom.tvs.map((existing: any) => 
-                                newRoom.tvs.find((t: any) => t.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.tvs.filter((t: any) => !existingRoom.tvs.some((e: any) => e.id === t.id))
-                              )
-                            }
-                            return orderedRoom
-                          })
-                          setRooms(updatedRooms)
-                        })
-                        .catch(console.error)
-                    }}
-                  >
-                    <div style={{ fontSize: '20px', color: onoff.value ? '#4CAF50' : '#666' }}>⚡</div>
-                    <div style={{ marginTop: 4, fontWeight: 600 }}>{onoff.name}</div>
-                    <div style={{ fontSize: '12px', color: '#ccc' }}>{onoff.value ? 'ON' : 'OFF'}</div>
-                  </button>
-                ))}
-
-                {/* ACs */}
-                {(room.acs || []).map((ac: any, idx: number) => (
-                  <div key={`ac-${ac.id}-${idx}`} style={styles.deviceCard as any}>
-                    <div style={{ fontSize: '20px', color: ac.value > 0 ? '#4CAF50' : '#666' }}>❄️</div>
-                    <div style={{ marginTop: 4, fontWeight: 600 }}>{ac.name || 'AC'}</div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={ac.value || 0}
-                      onChange={(e) => {
-                        const newValue = parseFloat(e.target.value)
-                        api.updateAc(ac.id, newValue, ac.name)
-                          .then(() => {
-                            let homeId = user.user?.home_id
-                            if (!homeId || homeId === 'mock-home-id' || homeId === 'undefined' || homeId === 'null') {
-                              homeId = DEFAULT_HOME_ID
-                            }
-                            return api.getRooms(homeId)
-                          })
-                          .then((data) => {
-                          if (!data) return
-                          // Preserve the original order by matching with existing rooms
-                          const updatedRooms = data.map((newRoom: any) => {
-                            const existingRoom = rooms.find((r: any) => r.id === newRoom.id)
-                            if (!existingRoom) return newRoom
-                            
-                            // Preserve order of devices by matching IDs with existing room
-                            const orderedRoom = { ...newRoom }
-                            if (existingRoom.switches && newRoom.switches) {
-                              orderedRoom.switches = existingRoom.switches.map((existing: any) => 
-                                newRoom.switches.find((s: any) => s.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.switches.filter((s: any) => !existingRoom.switches.some((e: any) => e.id === s.id))
-                              )
-                            }
-                            if (existingRoom.onoffs && newRoom.onoffs) {
-                              orderedRoom.onoffs = existingRoom.onoffs.map((existing: any) => 
-                                newRoom.onoffs.find((o: any) => o.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.onoffs.filter((o: any) => !existingRoom.onoffs.some((e: any) => e.id === o.id))
-                              )
-                            }
-                            if (existingRoom.acs && newRoom.acs) {
-                              orderedRoom.acs = existingRoom.acs.map((existing: any) => 
-                                newRoom.acs.find((a: any) => a.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.acs.filter((a: any) => !existingRoom.acs.some((e: any) => e.id === a.id))
-                              )
-                            }
-                            if (existingRoom.musics && newRoom.musics) {
-                              orderedRoom.musics = existingRoom.musics.map((existing: any) => 
-                                newRoom.musics.find((m: any) => m.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.musics.filter((m: any) => !existingRoom.musics.some((e: any) => e.id === m.id))
-                              )
-                            }
-                            if (existingRoom.tvs && newRoom.tvs) {
-                              orderedRoom.tvs = existingRoom.tvs.map((existing: any) => 
-                                newRoom.tvs.find((t: any) => t.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.tvs.filter((t: any) => !existingRoom.tvs.some((e: any) => e.id === t.id))
-                              )
-                            }
-                            return orderedRoom
-                          })
-                          setRooms(updatedRooms)
-                        })
-                          .catch(console.error)
-                      }}
-                      style={{ width: '100%', marginTop: 8 }}
-                    />
-                    <div style={{ fontSize: '12px', color: '#ccc', marginTop: 4 }}>{Math.round(ac.value || 0)}%</div>
-                  </div>
-                ))}
-
-                {/* Music Devices */}
-                {(room.musics || []).map((music: any, idx: number) => (
-                  <button 
-                    key={`music-${music.id}-${idx}`} 
-                    style={{ 
-                      ...(styles.deviceCard as any), 
-                      ...(music.playing ? (styles.deviceCardActive as any) : {}) 
-                    }} 
-                    onClick={() => {
-                      api.updateMusic(music.id, music.volume || 50, !music.playing, music.name)
-                        .then(() => {
-                          let homeId = user.user?.home_id
-                          if (!homeId || homeId === 'mock-home-id' || homeId === 'undefined' || homeId === 'null') {
-                            homeId = DEFAULT_HOME_ID
-                          }
-                          return api.getRooms(homeId)
-                        })
-                        .then((data) => {
-                          if (!data) return
-                          // Preserve the original order by matching with existing rooms
-                          const updatedRooms = data.map((newRoom: any) => {
-                            const existingRoom = rooms.find((r: any) => r.id === newRoom.id)
-                            if (!existingRoom) return newRoom
-                            
-                            // Preserve order of devices by matching IDs with existing room
-                            const orderedRoom = { ...newRoom }
-                            if (existingRoom.switches && newRoom.switches) {
-                              orderedRoom.switches = existingRoom.switches.map((existing: any) => 
-                                newRoom.switches.find((s: any) => s.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.switches.filter((s: any) => !existingRoom.switches.some((e: any) => e.id === s.id))
-                              )
-                            }
-                            if (existingRoom.onoffs && newRoom.onoffs) {
-                              orderedRoom.onoffs = existingRoom.onoffs.map((existing: any) => 
-                                newRoom.onoffs.find((o: any) => o.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.onoffs.filter((o: any) => !existingRoom.onoffs.some((e: any) => e.id === o.id))
-                              )
-                            }
-                            if (existingRoom.acs && newRoom.acs) {
-                              orderedRoom.acs = existingRoom.acs.map((existing: any) => 
-                                newRoom.acs.find((a: any) => a.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.acs.filter((a: any) => !existingRoom.acs.some((e: any) => e.id === a.id))
-                              )
-                            }
-                            if (existingRoom.musics && newRoom.musics) {
-                              orderedRoom.musics = existingRoom.musics.map((existing: any) => 
-                                newRoom.musics.find((m: any) => m.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.musics.filter((m: any) => !existingRoom.musics.some((e: any) => e.id === m.id))
-                              )
-                            }
-                            if (existingRoom.tvs && newRoom.tvs) {
-                              orderedRoom.tvs = existingRoom.tvs.map((existing: any) => 
-                                newRoom.tvs.find((t: any) => t.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.tvs.filter((t: any) => !existingRoom.tvs.some((e: any) => e.id === t.id))
-                              )
-                            }
-                            return orderedRoom
-                          })
-                          setRooms(updatedRooms)
-                        })
-                        .catch(console.error)
-                    }}
-                  >
-                    <div style={{ fontSize: '20px', color: music.playing ? '#4CAF50' : '#666' }}>🎵</div>
-                    <div style={{ marginTop: 4, fontWeight: 600 }}>{music.name || 'Music'}</div>
-                    <div style={{ fontSize: '12px', color: '#ccc' }}>{music.playing ? 'Playing' : 'Stopped'}</div>
-                  </button>
-                ))}
-
-                {/* TVs */}
-                {(room.tvs || []).map((tv: any, idx: number) => (
-                  <button 
-                    key={`tv-${tv.id}-${idx}`} 
-                    style={{ 
-                      ...(styles.deviceCard as any), 
-                      ...(tv.isOn ? (styles.deviceCardActive as any) : {}) 
-                    }} 
-                    onClick={() => {
-                      api.updateTv(tv.id, tv.channel || 1, tv.volume || 50, !tv.isOn, tv.name)
-                        .then(() => {
-                          let homeId = user.user?.home_id
-                          if (!homeId || homeId === 'mock-home-id' || homeId === 'undefined' || homeId === 'null') {
-                            homeId = DEFAULT_HOME_ID
-                          }
-                          return api.getRooms(homeId)
-                        })
-                        .then((data) => {
-                          if (!data) return
-                          // Preserve the original order by matching with existing rooms
-                          const updatedRooms = data.map((newRoom: any) => {
-                            const existingRoom = rooms.find((r: any) => r.id === newRoom.id)
-                            if (!existingRoom) return newRoom
-                            
-                            // Preserve order of devices by matching IDs with existing room
-                            const orderedRoom = { ...newRoom }
-                            if (existingRoom.switches && newRoom.switches) {
-                              orderedRoom.switches = existingRoom.switches.map((existing: any) => 
-                                newRoom.switches.find((s: any) => s.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.switches.filter((s: any) => !existingRoom.switches.some((e: any) => e.id === s.id))
-                              )
-                            }
-                            if (existingRoom.onoffs && newRoom.onoffs) {
-                              orderedRoom.onoffs = existingRoom.onoffs.map((existing: any) => 
-                                newRoom.onoffs.find((o: any) => o.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.onoffs.filter((o: any) => !existingRoom.onoffs.some((e: any) => e.id === o.id))
-                              )
-                            }
-                            if (existingRoom.acs && newRoom.acs) {
-                              orderedRoom.acs = existingRoom.acs.map((existing: any) => 
-                                newRoom.acs.find((a: any) => a.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.acs.filter((a: any) => !existingRoom.acs.some((e: any) => e.id === a.id))
-                              )
-                            }
-                            if (existingRoom.musics && newRoom.musics) {
-                              orderedRoom.musics = existingRoom.musics.map((existing: any) => 
-                                newRoom.musics.find((m: any) => m.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.musics.filter((m: any) => !existingRoom.musics.some((e: any) => e.id === m.id))
-                              )
-                            }
-                            if (existingRoom.tvs && newRoom.tvs) {
-                              orderedRoom.tvs = existingRoom.tvs.map((existing: any) => 
-                                newRoom.tvs.find((t: any) => t.id === existing.id) || existing
-                              ).filter(Boolean).concat(
-                                newRoom.tvs.filter((t: any) => !existingRoom.tvs.some((e: any) => e.id === t.id))
-                              )
-                            }
-                            return orderedRoom
-                          })
-                          setRooms(updatedRooms)
-                        })
-                        .catch(console.error)
-                    }}
-                  >
-                    <div style={{ fontSize: '20px', color: tv.isOn ? '#4CAF50' : '#666' }}>📺</div>
-                    <div style={{ marginTop: 4, fontWeight: 600 }}>{tv.name || 'TV'}</div>
-                    <div style={{ fontSize: '12px', color: '#ccc' }}>{tv.isOn ? 'ON' : 'OFF'}</div>
-                  </button>
-                ))}
-
-                {/* Gas and Smoke Sensors */}
-                {(room.gases || []).map((gas: any, idx: number) => (
-                  <div key={gas.id || idx} style={styles.deviceCard as any}>
-                    <div style={{ fontSize: '20px', color: gas.alertTriggered ? '#FF5722' : '#666' }}>💨</div>
-                    <div style={{ marginTop: 4, fontWeight: 600 }}>Gas Sensor</div>
-                    <div style={{ fontSize: '12px', color: gas.alertTriggered ? '#FF5722' : '#ccc' }}>
-                      {gas.alertTriggered ? 'Alert!' : `Value: ${gas.value || 0}`}
-                    </div>
-                  </div>
-                ))}
-                {(room.smokes || []).map((smoke: any, idx: number) => (
-                  <div key={smoke.id || idx} style={styles.deviceCard as any}>
-                    <div style={{ fontSize: '20px', color: smoke.alertTriggered ? '#FF5722' : '#666' }}>🔥</div>
-                    <div style={{ marginTop: 4, fontWeight: 600 }}>Smoke Sensor</div>
-                    <div style={{ fontSize: '12px', color: smoke.alertTriggered ? '#FF5722' : '#ccc' }}>
-                      {smoke.alertTriggered ? 'Alert!' : `Value: ${smoke.value || 0}`}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Command-based controls (door, smartCurtain, lights, stoves, etc.) - only show if active */}
+                {/* Command-based controls - only show devices that are active in activities */}
                 {room.activities && Object.entries(room.activities).map(([key, isActive]: [string, any]) => {
                   if (!isActive) return null
                   const state = (room.command as any)?.[key]
                   
-                  // Skip devices that are already shown as switches, onoffs, acs, musics, tvs, or sensors
-                  const skipKeys = ['ac', 'music', 'tv', 'tempratureSensor', 'gases', 'smokes', 'humiditySensor', 
-                    'rainSensors', 'motionDetector', 'waterFlowSensor', 'depthSensor', 'soilmoistureSensor', 
-                    'waterTanker', 'humidtySensor']
-                  if (skipKeys.includes(key)) return null
+                  // Skip if state is undefined or null
+                  if (state === undefined || state === null) return null
                   
-                  // Smart Curtain - special handling
-                  if (key === 'smartCurtain') {
-                    const active = isDeviceActive(key, state)
-                    return (
-                      <button key={key} style={{ ...(styles.deviceCard as any), ...(active ? (styles.deviceCardActive as any) : {}) }} onClick={() => handleCurtain(room.id)}>
-                        <div style={{ fontSize: '20px' }}>🪟</div>
-                        <div style={{ marginTop: 4, fontWeight: 600 }}>Smart Curtain</div>
-                        <div style={{ fontSize: '12px', color: '#ccc' }}>{state || 'closed'}</div>
-                      </button>
-                    )
-                  }
-                  
-                  // All light devices
-                  const lightKeys = ['mainLight', 'sideLight', 'leftHeadLight', 'rightHeadLight', 'goldLight', 
-                    'whiteLight', 'frontSideLights', 'backSideLights', 'wallLights', 'dangerFence', 
-                    'storRoomLight', 'centerLight', 'spotLight', 'shadowLight', 'diningLight', 'colliderLight',
-                    'strippeLight', 'diningStrippeLight']
-                  if (lightKeys.includes(key)) {
+                  // Master Bath Light
+                  if (key === 'masterBathLight') {
                     const active = isDeviceActive(key, state)
                     return (
                       <button key={key} style={{ ...(styles.deviceCard as any), ...(active ? (styles.deviceCardActive as any) : {}) }} onClick={() => toggleKey(room.id, key as any)}>
                         <div style={{ fontSize: '20px', color: active ? '#4CAF50' : '#666' }}>💡</div>
-                        <div style={{ marginTop: 4, fontWeight: 600 }}>{key.replace(/([A-Z])/g, ' $1').replace(/^\w/, c => c.toUpperCase())}</div>
+                        <div style={{ marginTop: 4, fontWeight: 600 }}>Master Bath Light</div>
                         <div style={{ fontSize: '12px', color: '#ccc' }}>{String(state || 'off')}</div>
                       </button>
                     )
                   }
                   
-                  // All other control devices (door, charger, stoves, oven, freezer, fan, plantWateringPump)
-                  const controlKeys = ['door', 'charger', 'stove', 'stove1', 'stove2', 'oven', 'freezer', 'fan', 'plantWateringPump']
-                  if (controlKeys.includes(key)) {
+                  // Kitchen devices
+                  if (key === 'stove' || key === 'stove1' || key === 'stove2') {
                     const active = isDeviceActive(key, state)
-                    const getIcon = (k: string) => {
-                      if (k === 'door') return '🚪'
-                      if (k === 'charger') return '🔌'
-                      if (k === 'stove' || k === 'stove1' || k === 'stove2') return '🔥'
-                      if (k === 'oven') return '🔥'
-                      if (k === 'freezer') return '🧊'
-                      if (k === 'fan') return '🌀'
-                      if (k === 'plantWateringPump') return '🌱'
-                      return '⚡'
-                    }
                     return (
                       <button key={key} style={{ ...(styles.deviceCard as any), ...(active ? (styles.deviceCardActive as any) : {}) }} onClick={() => toggleKey(room.id, key as any)}>
-                        <div style={{ fontSize: '20px', color: active ? '#4CAF50' : '#666' }}>{getIcon(key)}</div>
+                        <div style={{ fontSize: '20px', color: active ? '#4CAF50' : '#666' }}>🔥</div>
+                        <div style={{ marginTop: 4, fontWeight: 600 }}>{key === 'stove' ? 'Stove' : key === 'stove1' ? 'Stove 1' : 'Stove 2'}</div>
+                        <div style={{ fontSize: '12px', color: '#ccc' }}>{String(state || 'off')}</div>
+                      </button>
+                    )
+                  }
+                  
+                  if (key === 'oven') {
+                    const active = isDeviceActive(key, state)
+                    return (
+                      <button key={key} style={{ ...(styles.deviceCard as any), ...(active ? (styles.deviceCardActive as any) : {}) }} onClick={() => toggleKey(room.id, key as any)}>
+                        <div style={{ fontSize: '20px', color: active ? '#4CAF50' : '#666' }}>🔥</div>
+                        <div style={{ marginTop: 4, fontWeight: 600 }}>Oven</div>
+                        <div style={{ fontSize: '12px', color: '#ccc' }}>{String(state || 'off')}</div>
+                      </button>
+                    )
+                  }
+                  
+                  if (key === 'freezer') {
+                    const active = isDeviceActive(key, state)
+                    return (
+                      <button key={key} style={{ ...(styles.deviceCard as any), ...(active ? (styles.deviceCardActive as any) : {}) }} onClick={() => toggleKey(room.id, key as any)}>
+                        <div style={{ fontSize: '20px', color: active ? '#4CAF50' : '#666' }}>🧊</div>
+                        <div style={{ marginTop: 4, fontWeight: 600 }}>Freezer</div>
+                        <div style={{ fontSize: '12px', color: '#ccc' }}>{String(state || 'off')}</div>
+                      </button>
+                    )
+                  }
+                  
+                  if (key === 'fan') {
+                    const active = isDeviceActive(key, state)
+                    return (
+                      <button key={key} style={{ ...(styles.deviceCard as any), ...(active ? (styles.deviceCardActive as any) : {}) }} onClick={() => toggleKey(room.id, key as any)}>
+                        <div style={{ fontSize: '20px', color: active ? '#4CAF50' : '#666' }}>🌀</div>
+                        <div style={{ marginTop: 4, fontWeight: 600 }}>Fan</div>
+                        <div style={{ fontSize: '12px', color: '#ccc' }}>{String(state || 'off')}</div>
+                      </button>
+                    )
+                  }
+                  
+                  // Light devices
+                  const lightKeys = ['centerLight', 'spotLight', 'shadowLight', 'diningLight', 'colliderLight', 'strippeLight', 'diningStrippeLight']
+                  if (lightKeys.includes(key)) {
+                    const active = isDeviceActive(key, state)
+                    return (
+                      <button key={key} style={{ ...(styles.deviceCard as any), ...(active ? (styles.deviceCardActive as any) : {}) }} onClick={() => toggleKey(room.id, key as any)}>
+                        <div style={{ fontSize: '20px', color: active ? '#4CAF50' : '#666' }}>💡</div>
                         <div style={{ marginTop: 4, fontWeight: 600 }}>{key.replace(/([A-Z])/g, ' $1').replace(/^\w/, c => c.toUpperCase())}</div>
                         <div style={{ fontSize: '12px', color: '#ccc' }}>{String(state || 'off')}</div>
                       </button>
@@ -598,9 +191,6 @@ const styles = {
   subtitle: { color: '#bbb', margin: '0 16px 16px', fontFamily: "'Poppins', 'Roboto', sans-serif" },
   roomSection: { marginBottom: 32, padding: '0 16px' },
   roomTitle: { fontSize: 20, fontWeight: 700, margin: '0 0 12px 0', color: '#4CAF50', fontFamily: "'Poppins', 'Roboto', sans-serif" },
-  roomStats: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 },
-  stat: { background: '#1E2429', borderRadius: 12, padding: 16, textAlign: 'center', color: '#fff', fontFamily: "'Poppins', 'Roboto', sans-serif" },
-  statValue: { fontWeight: 700, marginTop: 4, fontFamily: "'Poppins', 'Roboto', sans-serif" },
   devicesGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 },
   deviceCard: { 
     background: '#1E2429', 
@@ -622,5 +212,3 @@ const styles = {
   tab: { background: 'transparent', border: 'none', color: '#888', fontWeight: 600, cursor: 'pointer', fontFamily: "'Poppins', 'Roboto', sans-serif" },
   tabActive: { background: 'transparent', border: 'none', color: '#4CAF50', fontWeight: 700, cursor: 'pointer', fontFamily: "'Poppins', 'Roboto', sans-serif" },
 }
-
-
