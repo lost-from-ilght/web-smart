@@ -79,7 +79,14 @@ export default function Home() {
           <p style={styles.greeting as any}>Hi, {user?.user?.name}</p>
           <p style={styles.subtitle as any}>Ready to control your home from your browser?</p>
           
-          {rooms.map((room) => (
+          {rooms.map((room) => {
+            // Check if room has any active devices
+            const hasActiveDevices = room.activities && Object.values(room.activities).some((isActive: any) => isActive === true)
+            
+            // Don't show room if it has no active devices
+            if (!hasActiveDevices) return null
+            
+            return (
             <div key={room.id} style={styles.roomSection as any}>
               <h2 style={styles.roomTitle as any}>{room.name}</h2>
               
@@ -166,7 +173,8 @@ export default function Home() {
                 })}
               </div>
             </div>
-          ))}
+            )
+          })}
         </>
       )}
       <div style={styles.tabs as any}>
